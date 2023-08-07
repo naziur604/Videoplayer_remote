@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Web Video Sync</title>
+</head>
+
+<body>
+  <h1>Web Video Sync</h1>
+  <label for="videoUrl">Enter Video URL:</label>
+  <input type="text" id="videoUrl">
+  <button onclick="setHost()">Set as Host</button>
+  <br>
+  <label for="sessionId">Enter Session ID:</label>
+  <input type="text" id="sessionId">
+  <button onclick="joinSession()">Join Session</button>
+  <br>
+  <video id="videoPlayer" controls></video>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Function to set the video URL and notify the host
+    function setHost() {
+      const videoUrl = document.getElementById('videoUrl').value;
+      socket.emit('host', videoUrl);
+    }
+
+    // Function to join a session and get the video URL
+    function joinSession() {
+      const sessionId = document.getElementById('sessionId').value;
+      socket.emit('join', sessionId);
+    }
+
+    let sessionId;
+    let syncInterval;
+    let isSeeking = false;
+
+    // Function to sync the video with the host
+    function syncVideo() {
+      const video = document.getElementById('videoPlayer');
+      if (!isSeeking && video.readyState === 4 && !video.paused) {
+        socket.emit('sync', sessionId, video.currentTime);
+      }
+    }
+
+    // Receive the video URL from the host and update the video player
+    socket.on('url', (url) => {
+      if (url) {
+        document.getElementById('videoPlayer').src = url;
+        document.getElementById('videoPlayer').addEventListener('loadedmetadata', () => {
+          // Synchronize the host's video time with all viewers
+          syncInterval = setInterval(syncVideo, 500);
+        });
+      } else {
+        document.getElementById('videoPlayer').src = '';
+        clearInterval(syncInterval);
+      }
+    });
+
+    // Receive the session ID from the host and update the frontend
+    socket.on('session_created', (createdSessionId) => {
+      sessionId = createdSessionId;
+      alert(`Your Session ID: ${sessionId}`);
+    });
+
+    // Synchronize the video time with the host
+    socket.on('sync', (time) => {
+      const video = document.getElementById('videoPlayer');
+      if (Math.abs(video.currentTime - time) > 0.5) {
+        video.currentTime = time;
+      }
+    });
+
+    // Handle session not found
+    socket.on('session_not_found', () => {
+      alert('Session not found. Please enter a valid session ID.');
+    });
+
+    // Handle session closure by host
+    socket.on('session_closed', () => {
+      alert('The host has closed the session.');
+    });
+
+    // Event listeners for seeking
+    document.getElementById('videoPlayer').addEventListener('seeking', () => {
+      isSeeking = true;
+    });
+
+    document.getElementById('videoPlayer').addEventListener('seeked', () => {
+      isSeeking = false;
+    });
+  </script>
+</body>
+
+</html>
