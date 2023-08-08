@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Drive Video Player</title>
+</head>
+<body>
+    <h1>Google Drive Video Player</h1>
+    <label for="videoUrl">Enter Google Drive video URL:</label>
+    <input type="text" id="videoUrl" placeholder="Paste video URL here">
+    <button id="playButton">Play</button>
+    <br>
+    <video controls id="videoPlayer" style="width: 100%;">
+        Your browser does not support the video tag.
+    </video>
+
+    <script>
+        const apiKey = "AIzaSyCSW8QMhryVLlnkhVMpZvb5Q4K1r-cez1c"; // Replace with your API key
+        const playButton = document.getElementById("playButton");
+        const videoUrlInput = document.getElementById("videoUrl");
+        const videoPlayer = document.getElementById("videoPlayer");
+
+        playButton.addEventListener("click", () => {
+            const videoUrl = videoUrlInput.value;
+            const fileId = getGoogleDriveFileId(videoUrl);
+            
+            if (fileId) {
+                const videoSource = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+                videoPlayer.src = videoSource;
+                videoPlayer.play();
+            } else {
+                alert("Invalid Google Drive video URL.");
+            }
+        });
+
+        function getGoogleDriveFileId(url) {
+            const regex = /(?:\/d\/|id=|\/file\/d\/)([\w-]{25,})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+    </script>
+</body>
+</html>
