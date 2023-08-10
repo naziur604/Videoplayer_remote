@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Video Player</title>
+</head>
+<body>
+  <h1>Enter YouTube Video URL</h1>
+  <form action="/play" method="post">
+    <input type="text" name="videoUrl" placeholder="Enter YouTube video URL" required>
+    <button type="submit">Play Video</button>
+  </form>
+  <div id="videoPlayer"></div>
+  <script>
+    const form = document.querySelector('form');
+    const videoPlayerDiv = document.getElementById('videoPlayer');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const videoUrl = event.target.videoUrl.value;
+      const videoId = getVideoIdFromUrl(videoUrl);
+      const videoIframe = createVideoIframe(videoId);
+      videoPlayerDiv.innerHTML = '';
+      videoPlayerDiv.appendChild(videoIframe);
+    });
+
+    function getVideoIdFromUrl(url) {
+      const urlParams = new URLSearchParams(new URL(url).search);
+      return urlParams.get('v');
+    }
+
+    function createVideoIframe(videoId) {
+      const iframe = document.createElement('iframe');
+      iframe.width = '560';
+      iframe.height = '315';
+      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+      iframe.frameBorder = '0';
+      iframe.allowFullscreen = true;
+      return iframe;
+    }
+  </script>
+</body>
+</html>
