@@ -19,11 +19,34 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-
+    const videoPlayer = document.getElementById('videoPlayer')
+    const apiKey = "AIzaSyCSW8QMhryVLlnkhVMpZvb5Q4K1r-cez1c"; // Replace with your API key
+    function getFileSourceUrl(url) {
+      if (/https:\/\/drive.google.com\/file/.test(url)) {
+        console.log("google drive found")
+        const fileId = getGoogleDriveFileId(url);
+        console.log(fileId)
+        if (fileId) {
+          const videoSourceUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+          videoPlayer.src = videoSourceUrl;
+          videoPlayer.play();
+          return videoSourceUrl
+        }
+      }
+      return url;
+    }
+    function getGoogleDriveFileId(url) {
+      const regex = /(?:\/d\/|id=|\/file\/d\/)([\w-]{25,})/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
     // Function to set the video URL and notify the host
     function setHost() {
       const videoUrl = document.getElementById('videoUrl').value;
-      socket.emit('host', videoUrl);
+      const formattedUrl = getFileSourceUrl(videoUrl)
+      console.log({formattedUrl})
+      isHost = true;
+      socket.emit('host', formattedUrl);
     }
 
     // Function to join a session and get the video URL
@@ -35,6 +58,7 @@
     let sessionId;
     let syncInterval;
     let isSeeking = false;
+    let isHost = false;
 
     // Function to sync the video with the host
     function syncVideo() {
@@ -47,6 +71,7 @@
     // Receive the video URL from the host and update the video player
     socket.on('url', (url) => {
       if (url) {
+        console.log('Got url from server', url);
         document.getElementById('videoPlayer').src = url;
         document.getElementById('videoPlayer').addEventListener('loadedmetadata', () => {
           // Synchronize the host's video time with all viewers
@@ -61,7 +86,8 @@
     // Receive the session ID from the host and update the frontend
     socket.on('session_created', (createdSessionId) => {
       sessionId = createdSessionId;
-      alert(`Your Session ID: ${sessionId}`);
+      console.log(`Your Session ID: ${sessionId}`);
+      console.log(sessionId)
     });
 
     // Synchronize the video time with the host
