@@ -18,6 +18,7 @@ io.on('connection', (socket) => {
   let sessionData;
 
   socket.on('join', (sessionId) => {
+    console.log("Join request ", sessions);
     if (sessionId in sessions) {
       sessionData = sessions[sessionId];
       socket.join(sessionId);
@@ -42,12 +43,26 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sync', (sessionId, time) => {
+    console.log("Sync called", sessionId, time);
     if (sessionData && sessionData.hostId === socket.id) {
       sessionData.syncTime = time;
       io.to(sessionId).emit('sync', time);
     }
   });
 
+  socket.on('pause', (sessionId) => {
+    console.log("pause called", sessionId);
+    if (sessionData && sessionData.hostId === socket.id) {
+      io.to(sessionId).emit('pause');
+    }
+  });
+
+  socket.on('play', (sessionId) => {
+    console.log("play called", sessionId);
+    if (sessionData && sessionData.hostId === socket.id) {
+      io.to(sessionId).emit('play');
+    }
+  });
   socket.on('disconnect', () => {
     if (sessionData && sessionData.hostId === socket.id) {
       const sessionId = Object.keys(sessions).find((key) => sessions[key] === sessionData);

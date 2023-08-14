@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+  <div id="player"></div>
+
+  <script>
+    function loadYouTubePlayerAPI() {
+      var tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+
+    // This function will be called when the YouTube API is ready
+    function onYouTubeIframeAPIReady() {
+      var player = new YT.Player('player', {
+        height: '360',
+        width: '640',
+        videoId: '5oH9Nr3bKfw', // Replace with the ID of the YouTube video you want to play
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+
+      function onPlayerReady(event) {
+        // Playback when the player is ready
+        setInterval(function () {
+          console.log("Current playtime: " + player.getCurrentTime() + " seconds");
+        }, 1000);
+        event.target.playVideo();
+      }
+
+      function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING) {
+          console.log('Video is playing');
+          // Your logic when the video starts playing
+        } else if (event.data == YT.PlayerState.PAUSED) {
+          console.log('Video is paused');
+          // Your logic for when the video is paused
+        } else if (event.data == YT.PlayerState.ENDED) {
+          console.log('Video has ended');
+          // Your logic for when the video has ended
+        } else if (event.data == YT.PlayerState.SEEKING) {
+          console.log('Video is seeking');
+          // Your logic for when the video is seeking
+        }
+      }
+    }
+
+    loadYouTubePlayerAPI();
+  </script>
+</body>
+</html>
