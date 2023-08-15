@@ -63,8 +63,8 @@
           console.log("Current playtime: " + youtubePlayer.getCurrentTime() + " seconds");
           !isPaused && socket.emit('sync', sessionId, youtubePlayer.getCurrentTime());
         }, 1000);
-        // event.target.playVideo();
-        isPaused = true;
+        event.target.playVideo();
+        isPaused = false;
         isYoutubePlayerReady = true;
       }
 
