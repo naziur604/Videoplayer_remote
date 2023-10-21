@@ -19,10 +19,123 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    const videoPlayer = document.getElementById('videoPlayer')
+    const apiKey = "AIzaSyCSW8QMhryVLlnkhVMpZvb5Q4K1r-cez1c"; // Replace with your API key
 
+    let sessionId;
+    let syncInterval;
+    let isSeeking = false;
+    let isHost = false;
+    let isYoutubePlayerReady = false;
+    let isYoutube = false;
+    let youTubeVideoId = '';
+    let isPaused = false;
+    // youtube functions
+    function isYoutubeURL(url) {
+      var pattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+      return pattern.test(url);
+    }
+
+    function loadYouTubePlayerAPI() {
+      var tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+
+    // This function will be called when the YouTube API is ready
+    function onYouTubeIframeAPIReady() {
+      console.log("YT Player ready", window.videoId)
+      youtubePlayer = new YT.Player('videoPlayer', {
+        height: '360',
+        width: '640',
+        videoId: youTubeVideoId, // Replace with the ID of the YouTube video you want to play
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+
+      function onPlayerReady(event) {
+        // Playback when the player is ready
+        isHost && setInterval(function () {
+          console.log("Current playtime: " + youtubePlayer.getCurrentTime() + " seconds");
+          !isPaused && socket.emit('sync', sessionId, youtubePlayer.getCurrentTime());
+        }, 1000);
+        event.target.playVideo();
+        isPaused = false;
+        isYoutubePlayerReady = true;
+      }
+
+      function onPlayerStateChange(event) {
+        if (event.data == YT.PlayerState.PLAYING) {
+          console.log('Video is playing');
+          socket.emit('play', sessionId)
+          isPaused = false;
+          // Your logic when the video starts playing
+        } else if (event.data == YT.PlayerState.PAUSED) {
+          console.log('Video is paused');
+          socket.emit('pause', sessionId)
+          isPaused = true
+          // Your logic for when the video is paused
+        } else if (event.data == YT.PlayerState.ENDED) {
+          console.log('Video has ended');
+          // Your logic for when the video has ended
+        } else if (event.data == YT.PlayerState.SEEKING) {
+          console.log('Video is seeking');
+          // Your logic for when the video is seeking
+        }
+      }
+    }
+    function getVideoIdFromUrl(url) {
+      const urlParams = new URLSearchParams(new URL(url).search);
+      return urlParams.get('v');
+    }
+    // Youtube functions end
+
+
+    // gdrive functions 
+    function isGdriveUrl(url) {
+      return /https:\/\/drive.google.com\/file/.test(url)
+    }
+
+    // gdrive functions end
+
+    function getFileSourceUrl(url) {
+      if (isGdriveUrl(url)) {
+        console.log("google drive url found")
+        const fileId = getGoogleDriveFileId(url);
+        console.log(fileId)
+        if (fileId) {
+          const videoSourceUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+          videoPlayer.src = videoSourceUrl;
+          videoPlayer.play();
+          return videoSourceUrl
+        }
+      } else if (isYoutubeURL(url)) {
+        isYoutube = true;
+        console.log('Its a yotube video')
+        // initiate script and you tube player api
+        loadYouTubePlayerAPI();
+        console.log("Called youtube api");
+        youTubeVideoId = getVideoIdFromUrl(url);
+      } else {
+        document.getElementById('videoPlayer').src = url;
+      }
+      return url;
+    }
+    function getGoogleDriveFileId(url) {
+      const regex = /(?:\/d\/|id=|\/file\/d\/)([\w-]{25,})/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
     // Function to set the video URL and notify the host
     function setHost() {
       const videoUrl = document.getElementById('videoUrl').value;
+      // const formattedUrl = getFileSourceUrl(videoUrl)
+      // console.log({ formattedUrl })
+      isHost = true;
       socket.emit('host', videoUrl);
     }
 
@@ -32,9 +145,7 @@
       socket.emit('join', sessionId);
     }
 
-    let sessionId;
-    let syncInterval;
-    let isSeeking = false;
+
 
     // Function to sync the video with the host
     function syncVideo() {
@@ -46,14 +157,16 @@
 
     // Receive the video URL from the host and update the video player
     socket.on('url', (url) => {
+      console.log('Got url from server', url)
       if (url) {
-        document.getElementById('videoPlayer').src = url;
+        const formattedUrl = getFileSourceUrl(url)
+        console.log('Got formatted url:', formattedUrl);
         document.getElementById('videoPlayer').addEventListener('loadedmetadata', () => {
           // Synchronize the host's video time with all viewers
           syncInterval = setInterval(syncVideo, 500);
         });
       } else {
-        document.getElementById('videoPlayer').src = '';
+        document.getElementById('videoPlateyer').src = '';
         clearInterval(syncInterval);
       }
     });
@@ -61,16 +174,35 @@
     // Receive the session ID from the host and update the frontend
     socket.on('session_created', (createdSessionId) => {
       sessionId = createdSessionId;
-      alert(`Your Session ID: ${sessionId}`);
+      console.log(`Your Session ID: ${sessionId}`);
+      console.log(sessionId)
+      alert(sessionId)
     });
 
     // Synchronize the video time with the host
     socket.on('sync', (time) => {
-      const video = document.getElementById('videoPlayer');
-      if (Math.abs(video.currentTime - time) > 0.5) {
-        video.currentTime = time;
+      if (!isYoutube) {
+        const video = document.getElementById('videoPlayer');
+        if (Math.abs(video.currentTime - time) > 0.5) {
+          video.currentTime = time;
+        }
+      } else if (isYoutubePlayerReady) {
+        !isHost && !isPaused && youtubePlayer.seekTo(time, true);
       }
     });
+
+    socket.on('pause', (time) => {
+      if (isYoutube) {
+        !isHost && youtubePlayer.pauseVideo();
+      }
+    });
+    socket.on('play', (time) => {
+      if (isYoutube) {
+        !isHost && youtubePlayer.playVideo();
+      }
+    });
+
+
 
     // Handle session not found
     socket.on('session_not_found', () => {

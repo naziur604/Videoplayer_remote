@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const app = express();
-const port = 3000; // You can change this port if needed
+const port = 3001; // You can change this port if needed
 const apiKey = 'AIzaSyCSW8QMhryVLlnkhVMpZvb5Q4K1r-cez1c'; // Replace with your actual YouTube API key
 
 app.use(express.urlencoded({ extended: true }));
